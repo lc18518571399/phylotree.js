@@ -315,14 +315,14 @@ export function modifySelection(
 
     if (do_refresh) {
       if (!skip_refresh) {
-        events.triggerRefresh(this);
+        events.triggerRefresh(this, this.instanceId);
       }
       if (this.countHandler) {
         counts = {};
         counts[attr] = this.links.reduce(function(p, c) {
           return p + (c[attr] ? 1 : 0);
         }, 0);
-        events.countUpdate(this, counts, this.countHandler);
+        events.countUpdate(this, counts, this.instanceId);
       }
 
       if (place) {
@@ -372,14 +372,14 @@ export function modifySelection(
 
     if (do_refresh) {
       if (!skip_refresh) {
-        events.triggerRefresh(this);
+        events.triggerRefresh(this, this.instanceId);
       }
       if (this.countHandler()) {
         counts = {};
         counts[attr] = this.links.reduce(function(p, c) {
           return p + (c[attr] ? 1 : 0);
         }, 0);
-        this.countUpdate(this, counts, this.countHandler());
+        this.countUpdate(this, counts, this.instanceId);
       }
 
       if (place) {

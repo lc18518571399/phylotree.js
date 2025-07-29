@@ -9,6 +9,7 @@ import * as clades from "./clades";
 import * as render_nodes from "./nodes";
 import * as render_edges from "./edges";
 import * as events from "./events";
+import { generatePhylotreeInstanceId } from "./events";
 import { css_classes } from "./options";
 import * as opt from "./options";
 import * as menus from "./menus";
@@ -25,6 +26,10 @@ class TreeRender {
     this.css_classes = css_classes;
     this.phylotree = phylotree;
     this.container = options.container;
+    
+    // 为每个进化树实例生成唯一ID
+    this.instanceId = generatePhylotreeInstanceId();
+    
     this.separation = function(_node, _previous) {
       return 0;
     };
@@ -141,7 +146,29 @@ class TreeRender {
     this.links = this.phylotree.nodes.links();
     this.initializeEdgeLabels();
     this.update();
-    events.d3PhylotreeAddEventListener();
+    
+    // 为当前实例添加事件监听器
+    events.d3PhylotreeAddEventListener(this.instanceId);
+  }
+
+  /**
+   * 销毁进化树实例，清理事件监听器
+   * 防止内存泄漏，特别是在单页应用中动态创建和销毁进化树时
+   */
+  destroy() {
+    // 移除事件监听器
+    events.d3PhylotreeRemoveEventListener(this.instanceId);
+    
+    // 清理SVG元素
+    if (this.svg) {
+      this.svg.remove();
+      this.svg = null;
+    }
+    
+    // 清理其他引用
+    this.phylotree = null;
+    this.container = null;
+    this.links = null;
   }
 
   pad_height() {
@@ -429,18 +456,19 @@ class TreeRender {
     this.syncEdgeLabels();
 
     if (this.options["zoom"]) {
-      let zoom = d3
+      // 创建缩放监听器并保存为实例属性，以便外部可以访问
+      this.zoom_listener = d3
         .zoom()
         .scaleExtent([0.1, 10])
         .on("zoom", (event) => {
-
-          d3.select("." + css_classes["tree-container"]).attr("transform", d => {
+          // 使用当前实例的SVG选择器，而不是全局选择器
+          this.svg.select("." + css_classes["tree-container"]).attr("transform", d => {
             let toTransform = event.transform;
             return toTransform;
           });
 
           // Give some extra room
-          d3.select("." + css_classes["tree-scale-bar"]).attr("transform", d => {
+          this.svg.select("." + css_classes["tree-scale-bar"]).attr("transform", d => {
             let toTransform = event.transform;
             toTransform.y -= 10; 
             return toTransform;
@@ -448,7 +476,7 @@ class TreeRender {
           
         });
 
-      this.svg.call(zoom);
+      this.svg.call(this.zoom_listener);
     }
 
     return this;
@@ -1260,11 +1288,11 @@ this.do_lr();
       );
 
       //.remove();
-      this.d3PhylotreeTriggerLayout(this);
+      events.d3PhylotreeTriggerLayout(this, this.instanceId);
       return this.update();
     }
 
-    this.d3PhylotreeTriggerLayout(this);
+    events.d3PhylotreeTriggerLayout(this, this.instanceId);
     return this;
   }
 

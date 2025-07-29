@@ -1,5 +1,5 @@
 {
-  "name": "phylotree",
+  "name": "@lichong/phylotree",
   "version": "2.1.0",
   "main": "dist/phylotree.js",
   "unpkg": "dist/phylotree.js",
@@ -64,5 +64,8 @@
     "dist/phylotree.min.js",
     "bin",
     "src"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

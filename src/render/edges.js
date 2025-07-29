@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 import { itemTagged, itemSelected } from "./helpers";
 import { css_classes } from "./options";
+import * as events from "./events";
 
 export function drawEdge(container, edge, transition) {
 
@@ -109,7 +110,7 @@ export function syncEdgeLabels() {
       return p + (itemTagged(c) ? 1 : 0);
     }, 0);
 
-    this.countUpdate(this, counts, this.countHandler());
+    events.countUpdate(this, counts, this.instanceId);
 
   }
 

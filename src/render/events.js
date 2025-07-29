@@ -1,7 +1,16 @@
 import { isLeafNode } from "../nodes";
 import { css_classes } from "./options";
 
-let d3_layout_phylotree_event_id = "phylotree.event";
+// 为每个进化树实例生成唯一的事件ID
+let phylotree_instance_counter = 0;
+
+/**
+ * 生成唯一的进化树实例ID
+ * @returns {string} 唯一的实例ID
+ */
+export function generatePhylotreeInstanceId() {
+  return "phylotree.event." + (++phylotree_instance_counter);
+}
 
 /**
  * Toggle collapsed view of a given node. Either collapses a clade into
@@ -99,25 +108,42 @@ export function rescale(scale, attr_name) {
   }
 }
 
-export function triggerRefresh(tree) {
-
-  var event = new CustomEvent(d3_layout_phylotree_event_id, {
+/**
+ * 触发刷新事件
+ * @param {Object} tree - 进化树实例
+ * @param {string} instanceId - 进化树实例的唯一ID
+ */
+export function triggerRefresh(tree, instanceId) {
+  let eventId = instanceId || "phylotree.event";
+  let event = new CustomEvent(eventId, {
     detail: ["refresh", tree]
   });
 
   document.dispatchEvent(event);
-
 }
 
-export function countUpdate(tree, counts) {
-  var event = new CustomEvent(d3_layout_phylotree_event_id, {
+/**
+ * 触发计数更新事件
+ * @param {Object} tree - 进化树实例
+ * @param {Object} counts - 计数数据
+ * @param {string} instanceId - 进化树实例的唯一ID
+ */
+export function countUpdate(tree, counts, instanceId) {
+  let eventId = instanceId || "phylotree.event";
+  let event = new CustomEvent(eventId, {
     detail: ["countUpdate", counts, tree.countHandler()]
   });
   document.dispatchEvent(event);
 }
 
-export function d3PhylotreeTriggerLayout(tree) {
-  var event = new CustomEvent(d3_layout_phylotree_event_id, {
+/**
+ * 触发布局事件
+ * @param {Object} tree - 进化树实例
+ * @param {string} instanceId - 进化树实例的唯一ID
+ */
+export function d3PhylotreeTriggerLayout(tree, instanceId) {
+  let eventId = instanceId || "phylotree.event";
+  let event = new CustomEvent(eventId, {
     detail: ["layout", tree, tree.layoutHandler()]
   });
   document.dispatchEvent(event);
@@ -137,10 +163,34 @@ export function d3PhylotreeEventListener(event) {
   return true;
 }
 
-export function d3PhylotreeAddEventListener() {
+/**
+ * 为特定进化树实例添加事件监听器
+ * @param {string} instanceId - 进化树实例的唯一ID
+ * @param {Function} customListener - 自定义事件监听器函数（可选）
+ */
+export function d3PhylotreeAddEventListener(instanceId, customListener) {
+  let eventId = instanceId || "phylotree.event";
+  let listener = customListener || d3PhylotreeEventListener;
+  
   document.addEventListener(
-    d3_layout_phylotree_event_id,
-    d3PhylotreeEventListener,
+    eventId,
+    listener,
+    false
+  );
+}
+
+/**
+ * 移除特定进化树实例的事件监听器
+ * @param {string} instanceId - 进化树实例的唯一ID
+ * @param {Function} customListener - 自定义事件监听器函数（可选）
+ */
+export function d3PhylotreeRemoveEventListener(instanceId, customListener) {
+  let eventId = instanceId || "phylotree.event";
+  let listener = customListener || d3PhylotreeEventListener;
+  
+  document.removeEventListener(
+    eventId,
+    listener,
     false
   );
 }

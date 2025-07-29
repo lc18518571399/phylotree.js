@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>进化树渲染测试</title>
+    <!-- 使用D3.js v6而不是v7，因为phylotree.js可能与v7不兼容 -->
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.1/underscore-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="./dist/phylotree.js"></script>
+    <link rel="stylesheet" href="./dist/phylotree.css">
+    <style>
+        .tree-container {
+            border: 1px solid #ccc;
+            margin: 20px;
+            padding: 10px;
+            position: relative;
+        }
+        #debug-info {
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        /* Ensure each SVG has its own context for zoom behavior */
+        .phylotree-container svg {
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>进化树渲染测试</h1>
+    <h2>进化树实例 1</h2>
+    <div id="tree-container-1" class="tree-container"></div>
+    <h2>进化树实例 2</h2>
+    <div id="tree-container-2" class="tree-container"></div>
+    <div id="debug-info">
+        <h3>调试信息</h3>
+        <pre id="debug-output"></pre>
+    </div>
+
+    <script>
+        // 测试用的Newick格式进化树数据
+        let newick1 = "((A:0.1,B:0.2):0.05,(C:0.3,D:0.4):0.1):0.0;";
+        let newick2 = "((E:0.15,F:0.25):0.1,(G:0.35,H:0.45):0.2):0.0;";
+        
+        // 调试输出函数
+        function debugLog(message) {
+            let debugOutput = document.getElementById('debug-output');
+            debugOutput.textContent += message + '\n';
+            console.log(message);
+        }
+        
+        /**
+         * 创建进化树实例并渲染
+         * @param {string} containerId - 容器ID
+         * @param {string} newickData - Newick格式的进化树数据
+         * @param {string} instanceName - 实例名称，用于调试输出
+         * @returns {Object} 渲染器对象
+         */
+        function createPhylotree(containerId, newickData, instanceName) {
+            debugLog(`开始创建${instanceName}...`);
+            
+            try {
+                // 解析Newick字符串
+                debugLog(`解析${instanceName}的Newick字符串...`);
+                let parsed = phylotree.newickParser(newickData);
+                if (parsed.error) {
+                    debugLog(`解析错误: ${parsed.error}`);
+                    return null;
+                }
+                debugLog(`${instanceName} Newick解析成功`);
+                
+                // 创建进化树实例
+                debugLog(`创建${instanceName}实例...`);
+                let tree = new phylotree.phylotree(parsed.json);
+                debugLog(`${instanceName}实例创建成功`);
+                
+                // 清空容器
+                debugLog(`清空${instanceName}容器...`);
+                let container = document.getElementById(containerId);
+                container.innerHTML = "";
+                
+                // 创建控制按钮
+                let controlsDiv = document.createElement('div');
+                controlsDiv.style.margin = '10px 0';
+                controlsDiv.style.textAlign = 'center';
+                
+                let zoomInBtn = document.createElement('button');
+                zoomInBtn.textContent = '放大';
+                zoomInBtn.style.margin = '0 5px';
+                zoomInBtn.style.padding = '5px 10px';
+                
+                let zoomOutBtn = document.createElement('button');
+                zoomOutBtn.textContent = '缩小';
+                zoomOutBtn.style.margin = '0 5px';
+                zoomOutBtn.style.padding = '5px 10px';
+                
+                let resetBtn = document.createElement('button');
+                resetBtn.textContent = '重置';
+                resetBtn.style.margin = '0 5px';
+                resetBtn.style.padding = '5px 10px';
+                
+                controlsDiv.appendChild(zoomInBtn);
+                controlsDiv.appendChild(zoomOutBtn);
+                controlsDiv.appendChild(resetBtn);
+                
+                container.appendChild(controlsDiv);
+                
+                // 使用phylotree的正确渲染方式
+                debugLog(`使用phylotree正确的render方法渲染${instanceName}...`);
+                
+                let renderer = tree.render({
+                    container: `#${containerId}`,
+                    width: 600,
+                    height: 400,
+                    'left-offset': 20,
+                    'show-scale': true,
+                    'left-right-spacing': 'fit-to-size',
+                    'top-bottom-spacing': 'fit-to-size',
+                    zoom: true,
+                    'show-labels': true,
+                    'font-size': 12,
+                    selectable: true,
+                    collapsible: true
+                });
+                
+                if (renderer) {
+                    debugLog(`${instanceName}渲染成功`);
+                    
+                    // 将SVG元素添加到容器中
+                    if (renderer.svg && renderer.svg.node) {
+                        container.appendChild(renderer.svg.node());
+                        debugLog(`${instanceName}的SVG元素已添加到DOM`);
+                    }
+                    
+                    // 设置缩放按钮功能
+                    if (renderer.zoom_listener) {
+                        zoomInBtn.onclick = function() {
+                            renderer.svg.transition().duration(300).call(renderer.zoom_listener.scaleBy, 1.2);
+                        };
+                        
+                        zoomOutBtn.onclick = function() {
+                            renderer.svg.transition().duration(300).call(renderer.zoom_listener.scaleBy, 0.8);
+                        };
+                        
+                        resetBtn.onclick = function() {
+                            renderer.svg.transition().duration(500).call(renderer.zoom_listener.transform, d3.zoomIdentity);
+                        };
+                    }
+                    
+                    // 检查渲染结果
+                    setTimeout(() => {
+                        debugLog(`检查${instanceName}的渲染结果:`);
+                        let svgElement = container.querySelector('svg');
+                        if (svgElement) {
+                            debugLog(`- ${instanceName}的SVG元素存在`);
+                            let treeContainer = svgElement.querySelector('.phylotree-container');
+                            if (treeContainer) {
+                                debugLog(`- ${instanceName}的树容器存在`);
+                                let nodes = treeContainer.querySelectorAll('circle');
+                                let edges = treeContainer.querySelectorAll('path');
+                                debugLog(`- ${instanceName}的节点数量: ${nodes.length}`);
+                                debugLog(`- ${instanceName}的边数量: ${edges.length}`);
+                            } else {
+                                debugLog(`- ${instanceName}的树容器不存在`);
+                            }
+                        } else {
+                            debugLog(`- ${instanceName}的SVG元素不存在`);
+                        }
+                    }, 100);
+                    
+                    return {
+                        tree: tree,
+                        renderer: renderer,
+                        instanceId: containerId
+                    };
+                } else {
+                    debugLog(`${instanceName}渲染失败`);
+                    return null;
+                }
+                
+            } catch (error) {
+                debugLog(`${instanceName}错误: ${error.message}`);
+                debugLog(`${instanceName}错误堆栈: ${error.stack}`);
+                return null;
+            }
+        }
+        
+        // 页面加载完成后创建进化树
+        window.addEventListener('load', function() {
+            debugLog('页面加载完成，开始创建进化树...');
+            
+            // 检查依赖库是否正确加载
+            debugLog('检查依赖库:');
+            debugLog('- d3: ' + (typeof d3 !== 'undefined' ? '已加载' : '未加载'));
+            debugLog('- d3版本: ' + (d3.version || '未知'));
+            debugLog('- underscore: ' + (typeof _ !== 'undefined' ? '已加载' : '未加载'));
+            debugLog('- lodash: ' + (typeof _.merge !== 'undefined' ? '已加载' : '未加载'));
+            debugLog('- phylotree: ' + (typeof phylotree !== 'undefined' ? '已加载' : '未加载'));
+            
+            // 详细检查phylotree库
+            if (typeof phylotree !== 'undefined') {
+                debugLog('phylotree库详情:');
+                debugLog('- phylotree.newickParser: ' + (typeof phylotree.newickParser === 'function' ? '是函数' : '不是函数'));
+                debugLog('- phylotree.phylotree: ' + (typeof phylotree.phylotree === 'function' ? '是函数' : '不是函数'));
+            }
+            
+            try {
+                // 创建第一个进化树实例
+                debugLog('尝试创建第一个进化树实例...');
+                let renderer1 = createPhylotree('tree-container-1', newick1, '进化树实例1');
+                debugLog('第一个进化树实例创建' + (renderer1 ? '成功' : '失败'));
+                
+                // 创建第二个进化树实例
+                debugLog('尝试创建第二个进化树实例...');
+                let renderer2 = createPhylotree('tree-container-2', newick2, '进化树实例2');
+                debugLog('第二个进化树实例创建' + (renderer2 ? '成功' : '失败'));
+                
+                // 检查DOM中是否有树元素
+                setTimeout(function() {
+                    debugLog('检查DOM中的树元素:');
+                    let tree1Elements = document.querySelectorAll('#tree-container-1 svg .tree-container');
+                    let tree2Elements = document.querySelectorAll('#tree-container-2 svg .tree-container');
+                    debugLog('- 树1容器元素数量: ' + tree1Elements.length);
+                    debugLog('- 树2容器元素数量: ' + tree2Elements.length);
+                    
+                    // 检查SVG元素
+                    let svg1 = document.querySelector('#tree-container-1 svg');
+                    let svg2 = document.querySelector('#tree-container-2 svg');
+                    debugLog('- 树1 SVG元素: ' + (svg1 ? '存在' : '不存在'));
+                    debugLog('- 树2 SVG元素: ' + (svg2 ? '存在' : '不存在'));
+                    
+                    if (svg1) {
+                        debugLog('- 树1 SVG内容: ' + svg1.innerHTML.substring(0, 100) + '...');
+                    }
+                    if (svg2) {
+                        debugLog('- 树2 SVG内容: ' + svg2.innerHTML.substring(0, 100) + '...');
+                    }
+                }, 1000);
+            } catch (error) {
+                debugLog('创建进化树时发生错误: ' + error.message);
+                debugLog('错误堆栈: ' + error.stack);
+            }
+            
+            debugLog('所有进化树实例创建完成');
+        });
+    </script>
+</body>
+</html>
