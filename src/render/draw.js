@@ -105,7 +105,11 @@ class TreeRender {
       "show-labels": true,
       "node-styler": null,
       "edge-styler": null,
-      "node-span": null
+      "node-span": null,
+      // 新增参数：控制拖拽功能是否启用
+      enableDrag: true,
+      // 新增参数：控制缩放功能是否启用  
+      enableZoom: true
     };
 
     this.ensure_size_is_in_px = function(value) {
@@ -455,26 +459,48 @@ class TreeRender {
 
     this.syncEdgeLabels();
 
-    if (this.options["zoom"]) {
-      // 创建缩放监听器并保存为实例属性，以便外部可以访问
-      this.zoom_listener = d3
-        .zoom()
-        .scaleExtent([0.1, 10])
-        .on("zoom", (event) => {
-          // 使用当前实例的SVG选择器，而不是全局选择器
-          this.svg.select("." + css_classes["tree-container"]).attr("transform", d => {
-            let toTransform = event.transform;
-            return toTransform;
-          });
+    // 处理缩放和拖拽功能的参数配置
+    // 向后兼容性：如果没有指定enableZoom或enableDrag，使用原有的zoom参数作为默认值
+    let shouldEnableZoom = this.options["enableZoom"] !== undefined ? this.options["enableZoom"] : this.options["zoom"];
+    let shouldEnableDrag = this.options["enableDrag"] !== undefined ? this.options["enableDrag"] : this.options["zoom"];
 
-          // Give some extra room
-          this.svg.select("." + css_classes["tree-scale-bar"]).attr("transform", d => {
-            let toTransform = event.transform;
-            toTransform.y -= 10; 
-            return toTransform;
-          });
-          
+    // 如果启用了缩放或拖拽功能中的任意一个，则创建zoom_listener
+    if (shouldEnableZoom || shouldEnableDrag) {
+      // 创建缩放监听器并保存为实例属性，以便外部可以访问
+      this.zoom_listener = d3.zoom();
+      
+      // 根据enableZoom参数控制缩放功能
+      if (shouldEnableZoom) {
+        this.zoom_listener.scaleExtent([0.1, 10]);
+      } else {
+        // 禁用缩放功能：将缩放范围设置为固定值1
+        this.zoom_listener.scaleExtent([1, 1]);
+      }
+      
+      // 根据enableDrag参数控制拖拽功能
+      if (!shouldEnableDrag) {
+        // 禁用拖拽功能：过滤掉拖拽事件
+        this.zoom_listener.filter((event) => {
+          // 只允许滚轮事件（用于缩放），禁止鼠标拖拽事件
+          return event.type === 'wheel';
         });
+      }
+      
+      // 设置zoom事件处理函数
+      this.zoom_listener.on("zoom", (event) => {
+        // 使用当前实例的SVG选择器，而不是全局选择器
+        this.svg.select("." + css_classes["tree-container"]).attr("transform", d => {
+          let toTransform = event.transform;
+          return toTransform;
+        });
+
+        // Give some extra room
+        this.svg.select("." + css_classes["tree-scale-bar"]).attr("transform", d => {
+          let toTransform = event.transform;
+          toTransform.y -= 10; 
+          return toTransform;
+        });
+      });
 
       this.svg.call(this.zoom_listener);
     }
