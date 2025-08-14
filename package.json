@@ -1,9 +1,9 @@
 {
   "name": "@lichong/phylotree",
-  "version": "2.1.1",
-  "main": "dist/phylotree.js",
-  "unpkg": "dist/phylotree.js",
-  "jsdelivr": "dist/phylotree.js",
+  "version": "2.1.6",
+  "main": "dist/@lichong/phylotree.js",
+  "unpkg": "dist/@lichong/phylotree.js",
+  "jsdelivr": "dist/@lichong/phylotree.js",
   "module": "src/index.js",
   "bin": {
     "root-to-tip": "./bin/root-to-tip.js",
@@ -56,12 +56,14 @@
     "build": "rollup -c rollup.config.js",
     "watch": "tape-watch -r source-map-support/register test/*-test.js",
     "test": "tape -r source-map-support/register 'test/*-test.js'",
-    "postpublish": "zip -j dist/phylotree.js.zip -- LICENSE README.md dist/phylotree.js dist/phylotree.min.js dist/phylotree.css"
+    "postpublish": "powershell -Command \"Compress-Archive -Path LICENSE,README.md,dist/@lichong/phylotree.js,dist/@lichong/phylotree.min.js,dist/phylotree.css -DestinationPath dist/phylotree.js.zip -Force\""
   },
   "files": [
     "dist/phylotree.css",
-    "dist/phylotree.js",
-    "dist/phylotree.min.js",
+    "dist/@lichong/phylotree.js",
+    "dist/@lichong/phylotree.min.js",
+    "dist/@lichong/phylotree.js.map",
+    "dist/@lichong/phylotree.min.js.map",
     "bin",
     "src"
   ],
