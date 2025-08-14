@@ -1,15 +1,15 @@
 {
   "name": "@lichong/phylotree",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "main": "dist/@lichong/phylotree.js",
   "unpkg": "dist/@lichong/phylotree.js",
   "jsdelivr": "dist/@lichong/phylotree.js",
   "module": "src/index.js",
   "bin": {
-    "root-to-tip": "./bin/root-to-tip.js",
-    "tag-branches": "./bin/phylotree-tag.js",
-    "phylotree": "./bin/phylotree.js",
-    "tip-date-extractor": "./bin/tip-date-extractor.js"
+    "root-to-tip": "bin/root-to-tip.js",
+    "tag-branches": "bin/phylotree-tag.js",
+    "phylotree": "bin/phylotree.js",
+    "tip-date-extractor": "bin/tip-date-extractor.js"
   },
   "keywords": [
     "phylogenetics",
@@ -59,7 +59,7 @@
     "postpublish": "powershell -Command \"Compress-Archive -Path LICENSE,README.md,dist/@lichong/phylotree.js,dist/@lichong/phylotree.min.js,dist/phylotree.css -DestinationPath dist/phylotree.js.zip -Force\""
   },
   "files": [
-    "dist/phylotree.css",
+    "phylotree.css",
     "dist/@lichong/phylotree.js",
     "dist/@lichong/phylotree.min.js",
     "dist/@lichong/phylotree.js.map",
