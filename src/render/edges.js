@@ -3,14 +3,25 @@ import { itemTagged, itemSelected } from "./helpers";
 import { css_classes } from "./options";
 import * as events from "./events";
 
+/**
+ * 绘制边
+ * @param {Object} container - D3选择器容器
+ * @param {Object} edge - 边对象
+ * @param {Object} transition - D3过渡对象
+ * @returns {Object} 返回phylotree实例
+ */
 export function drawEdge(container, edge, transition) {
 
   container = d3.select(container);
+
+  // 计算边的线条粗细
+  let strokeWidth = this.getEdgeStrokeWidth(edge);
 
   container = container
     .attr("class", d => {
       return this.reclassEdge(d);
     })
+    .style("stroke-width", strokeWidth + "px")
     .on("click", d => {
       this.modifySelection([edge.target], this.selection_attribute_name);
       this.update();
@@ -55,6 +66,11 @@ export function drawEdge(container, edge, transition) {
 
 }
 
+/**
+ * 重新分类边的CSS类
+ * @param {Object} edge - 边对象
+ * @returns {String} 返回边的CSS类字符串
+ */
 export function reclassEdge(edge) {
 
   let class_var = css_classes["branch"];
@@ -65,6 +81,11 @@ export function reclassEdge(edge) {
 
   if (itemSelected(edge, this.selection_attribute_name)) {
     class_var += " " + css_classes["selected-branch"];
+  }
+
+  // 检查是否为主分支边
+  if (this.options["bold-main-branch"] && this.isMainBranchNode && this.isMainBranchNode(edge.target)) {
+    class_var += " " + css_classes["main-branch"];
   }
 
   return class_var;
@@ -124,7 +145,8 @@ export function edgeCssSelectors(css_classes) {
   return [
     css_classes["branch"],
     css_classes["selected-branch"],
-    css_classes["tagged-branch"]
+    css_classes["tagged-branch"],
+    css_classes["main-branch"]
   ].reduce(function(p, c, i, a) {
     return (p += "path." + c + (i < a.length - 1 ? "," : ""));
   }, "");

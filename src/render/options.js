@@ -12,6 +12,7 @@ export const css_classes = {
   branch: "branch",
   "selected-branch": "branch-selected",
   "tagged-branch": "branch-tagged",
+  "main-branch": "branch-main",
   "tree-selection-brush": "tree-selection-brush",
   "branch-tracer": "branch-tracer",
   clade: "clade",

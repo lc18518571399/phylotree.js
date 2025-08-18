@@ -1,6 +1,6 @@
 {
   "name": "@lichong/phylotree",
-  "version": "2.1.7",
+  "version": "2.1.9",
   "main": "dist/@lichong/phylotree.js",
   "unpkg": "dist/@lichong/phylotree.js",
   "jsdelivr": "dist/@lichong/phylotree.js",
@@ -57,8 +57,7 @@
     "watch": "tape-watch -r source-map-support/register test/*-test.js",
     "test": "tape -r source-map-support/register 'test/*-test.js'",
     "login": "npm login https://registry.npmjs.org",
-    "publish": "npm publish --registry=https://registry.npmjs.org",
-    "postpublish": "powershell -Command \"Compress-Archive -Path LICENSE,README.md,dist/@lichong/phylotree.js,dist/@lichong/phylotree.min.js,dist/phylotree.css -DestinationPath dist/phylotree.js.zip -Force\""
+    "publish": "npm publish --registry=https://registry.npmjs.org"
   },
   "files": [
     "phylotree.css",

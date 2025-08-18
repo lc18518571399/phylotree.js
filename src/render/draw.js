@@ -109,7 +109,11 @@ class TreeRender {
       // 新增参数：控制拖拽功能是否启用
       enableDrag: true,
       // 新增参数：控制缩放功能是否启用  
-      enableZoom: true
+      enableZoom: true,
+      // 新增参数：控制主分支是否加粗
+      "bold-main-branch": false,
+      // 新增参数：控制是否严格遵守左下到右上的渲染顺序
+      "strict-bottom-left-to-top-right": false
     };
 
     this.ensure_size_is_in_px = function(value) {
@@ -149,6 +153,13 @@ class TreeRender {
     this.initialize_svg(this.container);
     this.links = this.phylotree.nodes.links();
     this.initializeEdgeLabels();
+    
+    // 初始化主分支标识
+    this.mainBranchNodes = new Set();
+    if (this.options["bold-main-branch"]) {
+      this.identifyMainBranch();
+    }
+    
     this.update();
     
     // 为当前实例添加事件监听器
@@ -173,6 +184,140 @@ class TreeRender {
     this.phylotree = null;
     this.container = null;
     this.links = null;
+  }
+
+  /**
+   * 识别进化树的主分支
+   * 主分支判断逻辑：第一分支节点最多的为主分支，节点数相同时选择进化距离最长的
+   */
+  identifyMainBranch() {
+    this.mainBranchNodes.clear();
+    
+    if (!this.phylotree.nodes || !this.phylotree.nodes.children) {
+      return;
+    }
+    
+    // 从根节点开始识别主分支
+    let currentNode = this.phylotree.nodes;
+    
+    while (currentNode && currentNode.children && currentNode.children.length > 0) {
+      // 将当前节点标记为主分支
+      this.mainBranchNodes.add(currentNode);
+      
+      let maxNodeCount = 0;
+      let maxDistance = 0;
+      let mainChild = null;
+      
+      // 遍历所有子节点，找到节点数最多的分支
+      for (let i = 0; i < currentNode.children.length; i++) {
+        let child = currentNode.children[i];
+        let nodeCount = this.countDescendants(child);
+        let branchDistance = this.calculateBranchDistance(child);
+        
+        // 如果节点数更多，或者节点数相同但距离更长，则选择这个分支
+        if (nodeCount > maxNodeCount || 
+            (nodeCount === maxNodeCount && branchDistance > maxDistance)) {
+          maxNodeCount = nodeCount;
+          maxDistance = branchDistance;
+          mainChild = child;
+        }
+      }
+      
+      currentNode = mainChild;
+    }
+    
+    // 将最后一个节点也标记为主分支（如果存在）
+    if (currentNode) {
+      this.mainBranchNodes.add(currentNode);
+    }
+  }
+  
+  /**
+   * 检查节点是否属于主分支
+   * @param {Object} node - 要检查的节点
+   * @returns {boolean} 是否属于主分支
+   */
+  isMainBranchNode(node) {
+    return this.mainBranchNodes.has(node);
+  }
+
+  /**
+   * 获取边的线条粗细
+   * @param {Object} edge - 边对象
+   * @returns {Number} 返回线条粗细的像素值
+   */
+  getEdgeStrokeWidth(edge) {
+    // 默认线条粗细
+    let defaultWidth = 1;
+    
+    // 检查是否为主分支边
+    if (this.options["bold-main-branch"] && this.isMainBranchNode && this.isMainBranchNode(edge.target)) {
+      let boldValue = this.options["bold-main-branch"];
+      
+      // 如果传入的是数字，则作为像素值使用
+      if (typeof boldValue === 'number') {
+        return boldValue;
+      }
+      // 如果传入的是字符串数字，转换为数字
+      else if (typeof boldValue === 'string' && !isNaN(parseFloat(boldValue))) {
+        return parseFloat(boldValue);
+      }
+      // 如果是布尔值true或其他值，使用默认的加粗粗细
+      else {
+        return 3;
+      }
+    }
+    
+    return defaultWidth;
+  }
+  
+  /**
+   * 计算节点的后代数量（包括叶子节点和内部节点）
+   * @param {Object} node - 要计算的节点
+   * @returns {number} 后代节点数量
+   */
+  countDescendants(node) {
+    if (!node) return 0;
+    
+    if (isLeafNode(node)) {
+      return 1;
+    }
+    
+    let count = 1; // 包括当前节点
+    if (node.children) {
+      for (let i = 0; i < node.children.length; i++) {
+        count += this.countDescendants(node.children[i]);
+      }
+    }
+    
+    return count;
+  }
+  
+  /**
+   * 计算从当前节点到所有叶子节点的最大进化距离
+   * @param {Object} node - 要计算的节点
+   * @returns {number} 最大进化距离
+   */
+  calculateBranchDistance(node) {
+    if (!node) return 0;
+    
+    if (isLeafNode(node)) {
+      return this.phylotree.branch_length_accessor ? 
+             (this.phylotree.branch_length_accessor(node) || 0) : 0;
+    }
+    
+    let maxDistance = 0;
+    if (node.children) {
+      for (let i = 0; i < node.children.length; i++) {
+        let childDistance = this.calculateBranchDistance(node.children[i]);
+        maxDistance = Math.max(maxDistance, childDistance);
+      }
+    }
+    
+    let currentBranchLength = this.phylotree.branch_length_accessor ? 
+                             (this.phylotree.branch_length_accessor(node) || 0) : 0;
+    
+    return currentBranchLength + maxDistance;
   }
 
   pad_height() {
@@ -701,6 +846,11 @@ class TreeRender {
         */
 
     let count_undefined = 0;
+    
+    // 如果启用了严格左下到右上渲染，对子节点进行排序
+    if (this.options["strict-bottom-left-to-top-right"] && a_node.children) {
+      this.sortChildrenForBottomLeftToTopRight(a_node);
+    }
 
     if (this.showInternalName(a_node)) {
       // do in-order traversal to allow for proper internal node spacing
@@ -748,6 +898,101 @@ class TreeRender {
       }
     }
   }
+  
+  /**
+   * 对子节点进行排序以实现严格的左下到右上渲染
+   * 排序规则：按照子树的叶子节点数量和进化距离进行排序
+   * @param {Object} node - 要排序子节点的父节点
+   */
+  sortChildrenForBottomLeftToTopRight(node) {
+    if (!node.children || node.children.length <= 1) {
+      return;
+    }
+    
+    // 为每个子节点计算排序权重
+    let childrenWithWeights = [];
+    for (let i = 0; i < node.children.length; i++) {
+      let child = node.children[i];
+      let leafCount = this.countLeafNodes(child);
+      let maxDepth = this.getMaxDepthFromNode(child);
+      let branchLength = this.phylotree.branch_length_accessor ? 
+                        (this.phylotree.branch_length_accessor(child) || 0) : 0;
+      
+      // 计算排序权重：叶子节点数量 * 1000 + 最大深度 * 100 + 分支长度
+      // 这样可以确保叶子节点多的分支排在前面（左下），深度大的排在后面（右上）
+      let weight = leafCount * 1000 + maxDepth * 100 + branchLength;
+      
+      childrenWithWeights.push({
+        node: child,
+        weight: weight,
+        leafCount: leafCount,
+        maxDepth: maxDepth,
+        branchLength: branchLength
+      });
+    }
+    
+    // 按权重降序排序（权重大的在前，实现左下到右上）
+    childrenWithWeights.sort((a, b) => {
+      // 首先按叶子节点数量降序排序
+      if (a.leafCount !== b.leafCount) {
+        return b.leafCount - a.leafCount;
+      }
+      // 如果叶子节点数量相同，按最大深度升序排序
+      if (a.maxDepth !== b.maxDepth) {
+        return a.maxDepth - b.maxDepth;
+      }
+      // 如果深度也相同，按分支长度降序排序
+      return b.branchLength - a.branchLength;
+    });
+    
+    // 更新子节点数组
+    node.children = childrenWithWeights.map(item => item.node);
+  }
+  
+  /**
+   * 计算节点下的叶子节点数量
+   * @param {Object} node - 要计算的节点
+   * @returns {number} 叶子节点数量
+   */
+  countLeafNodes(node) {
+    if (!node) return 0;
+    
+    if (isLeafNode(node)) {
+      return 1;
+    }
+    
+    let count = 0;
+    if (node.children) {
+      for (let i = 0; i < node.children.length; i++) {
+        count += this.countLeafNodes(node.children[i]);
+      }
+    }
+    
+    return count;
+  }
+  
+  /**
+   * 获取从当前节点到叶子节点的最大深度
+   * @param {Object} node - 要计算的节点
+   * @returns {number} 最大深度
+   */
+  getMaxDepthFromNode(node) {
+    if (!node) return 0;
+    
+    if (isLeafNode(node)) {
+      return 1;
+    }
+    
+    let maxDepth = 0;
+    if (node.children) {
+      for (let i = 0; i < node.children.length; i++) {
+        let childDepth = this.getMaxDepthFromNode(node.children[i]);
+        maxDepth = Math.max(maxDepth, childDepth);
+      }
+    }
+    
+    return maxDepth + 1;
+  }
 
   do_lr(at_least_one_dimension_fixed) {
     if (this.radial() && at_least_one_dimension_fixed) {
@@ -771,20 +1016,16 @@ class TreeRender {
 
       at_least_one_dimension_fixed = true;
 
-      let available_width =
-        this.size[1] - this.offsets[1] - this.options["left-offset"];
+      // 当使用fit-to-size模式时，使用全部容器宽度，因为g标签已经从x=0开始
+      let available_width = this.size[1];
 
       if (available_width * 0.5 < this.label_width) {
         this.shown_font_size *= (available_width * 0.5) / this.label_width;
         this.label_width = available_width * 0.5;
       }
 
-      this.scales[1] =
-        (this.size[1] -
-          this.offsets[1] -
-          this.options["left-offset"] -
-          this.label_width) /
-        this._extents[1][1];
+      // 使用全部容器宽度减去标签宽度进行缩放计算
+      this.scales[1] = (this.size[1] - this.label_width) / this._extents[1][1];
     }
   }
 
@@ -1037,7 +1278,7 @@ this.do_lr();
       this.phylotree.nodes.each(d => {
 
         d.x *= this.scales[0];
-        d.y *= this.scales[1]*.8;
+        d.y *= this.scales[1];
 
         if (this.options["layout"] == "right-to-left") {   
           d.y = this._extents[1][1] * this.scales[1] - d.y;
@@ -1054,7 +1295,7 @@ this.do_lr();
         if (d.collapsed) {
           d.collapsed.forEach(p => {
             p[0] *= this.scales[0];
-            p[1] *= this.scales[1]*.8;
+            p[1] *= this.scales[1];
           });
 
           let last_x = d.collapsed[1][0];
